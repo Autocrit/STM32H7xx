@@ -213,8 +213,8 @@
 
 #define AUXINPUT0_PORT          GPIOE
 #define AUXINPUT0_PIN           15
-#define AUXINPUT1_PORT          GPIOD
-#define AUXINPUT1_PIN           1
+//#define AUXINPUT1_PORT          GPIOD
+//#define AUXINPUT1_PIN           1
 #define AUXINPUT2_PORT          GPIOF
 #define AUXINPUT2_PIN           2
 #if N_ABC_MOTORS == 0
