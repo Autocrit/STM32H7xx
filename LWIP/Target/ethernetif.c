@@ -137,6 +137,23 @@ lan8742_IOCtx_t  LAN8742_IOCtx = {ETH_PHY_IO_Init,
 
 /* USER CODE BEGIN 3 */
 
+uint32_t crc32_bitwise(const void* data, size_t length)
+{
+  const uint32_t polynomial = 0xEDB88320;
+  uint32_t crc = 0xFFFFFFFF;
+  unsigned char* current = (unsigned char*) data;
+  while (length--)
+  {
+    crc ^= *current++;
+    for (unsigned int j = 0; j < 8; j++)
+      if (crc & 1)
+        crc = (crc >> 1) ^ polynomial;
+      else
+        crc =  crc >> 1;
+  }
+  return ~crc;
+}
+
 /* USER CODE END 3 */
 
 /* Private functions ---------------------------------------------------------*/
@@ -161,14 +178,34 @@ static void low_level_init(struct netif *netif)
   HAL_StatusTypeDef hal_eth_init_status = HAL_OK;
   /* Start ETH HAL Init */
 
-   uint8_t MACAddr[6] ;
-  heth.Instance = ETH;
+  //
+  // Generate a unique MAC address;
+  // First three bytes are the ST OUI prefix, but with the LAA bit set.
+  // Last three bytes from a CRC32 hash of the 96 bit chip UID.
+  //
+  uint8_t MACAddr[6];
+
+  // ST OUI prefix
   MACAddr[0] = 0x00;
   MACAddr[1] = 0x80;
   MACAddr[2] = 0xE1;
-  MACAddr[3] = 0x00;
-  MACAddr[4] = 0x00;
-  MACAddr[5] = 0x00;
+
+  // Set LAA bit
+  MACAddr[0] |= 0x02;
+
+  // Get 96 bit unique device identifier
+  uint32_t uid[3];
+  uid[0] = HAL_GetUIDw0();
+  uid[1] = HAL_GetUIDw1();
+  uid[2] = HAL_GetUIDw2();
+
+  // Generate 32bit CRC from 96 bit UID
+  uint32_t crc = crc32_bitwise(uid, 12);
+
+  // Copy first 24bits of the CRC into the MAC address
+  memcpy(&MACAddr[3], &crc, 3);
+
+  heth.Instance = ETH;
   heth.Init.MACAddr = &MACAddr[0];
   heth.Init.MediaInterface = HAL_ETH_RMII_MODE;
   heth.Init.TxDesc = DMATxDscrTab;
